@@ -1,37 +1,26 @@
+"""Configuration constants for Clinical Bridge.
+
+Contains risk stratification thresholds, FHIR terminology codes,
+SNOMED CT condition mappings, and model metadata used by the risk
+engine and FHIR builder.
 """
-Clinical Bridge - Configuration Module
+from dataclasses import dataclass
 
-Single source of truth for all constants, thresholds, and terminology mappings.
-Designed for extensibility: adding new conditions requires only adding entries
-to the dictionaries below — no architectural changes needed.
-"""
-
-from dataclasses import dataclass, field
-from typing import Dict
-
-
-# ─── Risk Stratification Thresholds ─────────────────────────────────────────
-# These thresholds determine how a normalized risk score (0.0–1.0) derived
-# from SleepFM's CoxPH survival analysis is translated into a clinically
-# meaningful risk category.
-#
-# SleepFM uses Cox Proportional Hazards loss for disease prediction,
-# producing hazard-based outputs. The risk_score field in our input schema
-# represents a normalized value derived from these hazard predictions.
-#
+# ------ Risk Stratification Thresholds ---------------------------------------
 # Clinical rationale:
-#   >= HIGH_THRESHOLD  → "high"     → May require urgent intervention
-#   >= MOD_THRESHOLD   → "moderate" → Close follow-up recommended
-#   <  MOD_THRESHOLD   → "low"      → Routine monitoring sufficient
+#   >= HIGH_RISK_THRESHOLD      -> "high"     -> May require urgent intervention
+#   >= MODERATE_RISK_THRESHOLD  -> "moderate" -> Close follow-up recommended
+#   <  MODERATE_RISK_THRESHOLD  -> "low"      -> Routine monitoring sufficient
 #
-# These values are intentionally kept in configuration so that clinicians
-# can adjust them without modifying application logic.
+# NOTE: These thresholds are based on rough clinical intuition, not
+# validated against specific literature or outcome data. A production
+# deployment should calibrate these against prospective cohort data.
 
 HIGH_RISK_THRESHOLD: float = 0.80
 MODERATE_RISK_THRESHOLD: float = 0.50
 
 
-# ─── FHIR R4 Risk Probability Code System ───────────────────────────────────
+# ------ FHIR R4 Risk Probability Code System ---------------------------------
 # Official HL7 terminology for qualitative risk levels.
 # Reference: http://terminology.hl7.org/CodeSystem/risk-probability
 
@@ -41,18 +30,26 @@ RISK_PROBABILITY_SYSTEM: str = (
 
 @dataclass(frozen=True)
 class RiskLevel:
-    """Represents a FHIR-compliant qualitative risk classification."""
+    """Represents a FHIR-compliant qualitative risk classification.
+
+    frozen=True makes instances immutable and hashable, which allows
+    them to be safely used as dictionary keys and prevents accidental
+    mutation of the FHIR coding values.
+    """
     code: str
     display: str
 
-RISK_LEVELS: Dict[str, RiskLevel] = {
+# Lookup table mapping risk category names to FHIR-compliant RiskLevel
+# objects. Used by risk_engine.py to convert threshold comparisons
+# into structured FHIR coding entries.
+RISK_LEVELS: dict[str, RiskLevel] = {
     "high": RiskLevel(code="high", display="High likelihood"),
     "moderate": RiskLevel(code="moderate", display="Moderate likelihood"),
     "low": RiskLevel(code="low", display="Low likelihood"),
 }
 
 
-# ─── SNOMED CT Terminology Mappings ──────────────────────────────────────────
+# ------ SNOMED CT Terminology Mappings ---------------------------------------
 # Maps internal condition identifiers to their universal SNOMED CT codes.
 # SNOMED CT is the global clinical terminology standard used in FHIR resources.
 #
@@ -74,7 +71,11 @@ class SnomedConcept:
     code: str
     display: str
 
-SNOMED_MAPPINGS: Dict[str, SnomedConcept] = {
+
+# Mapping from human-readable condition names (used as internal keys)
+# to their SNOMED CT coded concepts. Extended in v0.3 to support
+# SleepFM's multi-condition output.
+SNOMED_MAPPINGS: dict[str, SnomedConcept] = {
     "Atrial Fibrillation": SnomedConcept(
         code="71908006",
         display="Atrial fibrillation (disorder)",
@@ -82,7 +83,7 @@ SNOMED_MAPPINGS: Dict[str, SnomedConcept] = {
 }
 
 
-# ─── AI Model Metadata ──────────────────────────────────────────────────────
+# ------ AI Model Metadata ----------------------------------------------------
 # Identifies the prediction model in the FHIR output.
 # This allows downstream systems to trace which model version produced
 # a given risk assessment.
@@ -90,7 +91,11 @@ SNOMED_MAPPINGS: Dict[str, SnomedConcept] = {
 # Reference: https://github.com/zou-group/sleepfm-clinical
 # Published: Nature Medicine (2025)
 # Method: CoxPH survival analysis on multimodal PSG embeddings
-
+# NOTE: "http://custom.ai/models" is a placeholder URL, not a registered
+# FHIR code system. It satisfies FHIR's URI format requirement for schema
+# validation, but a production deployment would require either a
+# project-specific namespace registered through a terminology authority
+# or integration with an existing AI/ML model code system.
 MODEL_SYSTEM: str = "http://custom.ai/models"
 MODEL_CODE: str = "sleepfm-clinical-v1"
 MODEL_DISPLAY: str = "SleepFM Clinical Risk Prediction Model v1"
