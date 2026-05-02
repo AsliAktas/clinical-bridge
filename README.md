@@ -1,5 +1,14 @@
 # Clinical Bridge
 
+**In one sentence:** Clinical Bridge is a Python tool that converts AI-generated disease risk predictions into a standardized format that hospital information systems can read.
+
+**A bit more detail:** SleepFM, an AI model developed at Stanford, analyzes overnight sleep recordings (polysomnography) and predicts a patient's risk for over 130 conditions — atrial fibrillation, dementia, heart failure, and more. But SleepFM's raw output is just a number, like `{"risk_score": 0.85}`. Hospital information systems can't store or interpret raw numbers — they need data structured according to international standards (HL7 FHIR) with universal medical codes (SNOMED CT). Clinical Bridge sits between these two worlds: it takes the model's output, validates it, classifies the risk level, attaches the right medical terminology codes, and produces a `FHIR R4 RiskAssessment` resource that any compliant hospital system can consume.
+
+*Built and maintained by Aslı Aktaş, a Computer Engineering student in Türkiye exploring AI-clinical interoperability as an independent extension to the SleepFM ecosystem.*
+
+**Status:** Reference implementation · Single condition (AFib) · Mock-data validated · Not certified for clinical use
+**License:** MIT · Open source · Contributions welcome
+
 **A type-safe adapter that converts [SleepFM](https://github.com/zou-group/sleepfm-clinical) CoxPH survival analysis predictions into HL7 FHIR R4 RiskAssessment resources.**
 
 Clinical Bridge sits between AI model output and clinical information systems, handling input validation (Pydantic), clinical terminology mapping (SNOMED CT), risk stratification, and standards-compliant resource generation (FHIR R4) — so researchers don't have to.
@@ -9,6 +18,15 @@ Clinical Bridge sits between AI model output and clinical information systems, h
 ## Why This Exists
 
 SleepFM produces powerful disease risk predictions from polysomnography data, but its raw outputs are not directly consumable by hospital information systems. Clinical systems require structured, standards-compliant data with universal terminology codes. Clinical Bridge solves this interoperability gap.
+
+## What This Is NOT
+
+- **Not a risk prediction model** — only post-processing of model outputs. No ML, no inference, no training data inside this repository.
+- **Not a replacement for SleepFM** — this adapter sits *downstream* of the model, converting its outputs to clinical formats.
+- **Not affiliated with Stanford or the official SleepFM team** — this is an independent, community-built extension. Inspired by the SleepFM paper, not endorsed by it.
+- **Not validated on real patient data** — tested only on synthetic CoxPH-style inputs.
+- **Not certified for clinical use** — no regulatory review (FDA, CE, or otherwise) has been performed.
+- **Not currently multi-condition** — Atrial Fibrillation reference  implementation only. The architecture is designed to scale to all   130 SleepFM conditions, but additional conditions are not yet configured.
 
 ### Before → After
 
